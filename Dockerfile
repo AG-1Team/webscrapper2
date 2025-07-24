@@ -61,5 +61,5 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . /app
 WORKDIR /app
 
-CMD ["python", "script1.py"]
+CMD ["python", "script2.py"]
 
