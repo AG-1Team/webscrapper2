@@ -19,6 +19,8 @@ from urllib.parse import urljoin, urlparse
 import undetected_chromedriver as uc
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
+import base64
+import requests
 
 def wait_and_retry_on_block(driver, url, max_retries=1):
     """Minimal placeholder: just loads the URL and returns True."""
@@ -964,6 +966,46 @@ def save_data_with_append(all_products, existing_products):
     
     return csv_filename, json_filename, len(combined_products)
 
+def upload_to_github(file_path, repo, token, remote_path):
+    """Upload or update a file in a GitHub repo using the REST API."""
+    try:
+        url = f"https://api.github.com/repos/{repo}/contents/{remote_path}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+
+        # Read file contents and encode
+        with open(file_path, "rb") as f:
+            content = f.read()
+        encoded_content = base64.b64encode(content).decode("utf-8")
+
+        # Check if file already exists
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            sha = response.json()["sha"]
+            print(f"[ℹ️] File {remote_path} exists, will update")
+        else:
+            sha = None
+            print(f"[🆕] File {remote_path} does not exist, will create")
+
+        data = {
+            "message": f"Upload {remote_path}",
+            "content": encoded_content,
+            "branch": "main"
+        }
+        if sha:
+            data["sha"] = sha
+
+        upload_response = requests.put(url, headers=headers, json=data)
+        if upload_response.status_code in [200, 201]:
+            print(f"[✅] Uploaded {file_path} to GitHub as {remote_path}")
+        else:
+            print(f"[❌] Failed to upload {file_path}: {upload_response.text}")
+
+    except Exception as e:
+        print(f"[❌] Exception during GitHub upload: {e}")
+
 def main():
     MAX_PRODUCTS_PER_CATEGORY = None  # Scrape all products
     DOWNLOAD_IMAGES = True
@@ -1116,6 +1158,19 @@ def main():
         driver.quit()
         print("[✅] Browser closed successfully")
     save_data_with_append(all_products, existing_products)
+    # Upload to GitHub after scraping
+    GITHUB_REPO = "os959345/webscrapper2"  # Example: os959345/webscrapper
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # Best: set this in Railway > Variables
+
+    # Filenames returned from save_data_with_append
+    csv_filename, json_filename, total_products = save_data_with_append(all_products, existing_products)
+
+    if GITHUB_TOKEN:
+        upload_to_github(csv_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{csv_filename}")
+        upload_to_github(json_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{json_filename}")
+    else:
+        print("[⚠️] GITHUB_TOKEN not set. Skipping upload to GitHub.")
+
 
 if __name__ == "__main__":
     main()
