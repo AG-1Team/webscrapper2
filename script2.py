@@ -1022,7 +1022,7 @@ def upload_to_github(file_path, repo, token, remote_path):
 
 def main():
     GITHUB_REPO = "os959345/webscrapper2"  # Example: os959345/webscrapper
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+    GITHUB_TOKEN = "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"
     MAX_PRODUCTS_PER_CATEGORY = None  # Scrape all products
     DOWNLOAD_IMAGES = True
     categories = {
@@ -1030,102 +1030,102 @@ def main():
             'url': 'https://www.ounass.ae/women/clothing',
             'path': 'Women > Clothing'
         },
-        # 'Women Shoes': {
-        #     'url': 'https://www.ounass.ae/women/shoes',
-        #     'path': 'Women > Shoes'
-        # },
-        # 'Women Bags': {
-        #     'url': 'https://www.ounass.ae/women/bags',
-        #     'path': 'Women > Bags'
-        # },
-        # 'Women Beauty': {
-        #     'url': 'https://www.ounass.ae/women/beauty',
-        #     'path': 'Women > Beauty'
-        # },
-        # 'Women Fine Jewellery': {
-        #     'url': 'https://www.ounass.ae/women/jewellery/fine-jewellery',
-        #     'path': 'Women > Jewellery > Fine Jewellery'
-        # },
-        # 'Women Fashion Jewellery': {
-        #     'url': 'https://www.ounass.ae/women/jewellery/fashion-jewellery',
-        #     'path': 'Women > Jewellery > Fashion Jewellery'
-        # },
-        # 'Women Accessories': {
-        #     'url': 'https://www.ounass.ae/women/accessories',
-        #     'path': 'Women > Accessories'
-        # },
-        # 'Women Gifts': {
-        #     'url': 'https://www.ounass.ae/women/edits/gifts-for-her',
-        #     'path': 'Women > Gifts'
-        # },
-        # 'Women Home': {
-        #     'url': 'https://www.ounass.ae/women/home',
-        #     'path': 'Women > Home'
-        # },
-        # 'Women Pre-loved': {
-        #     'url': 'https://www.ounass.ae/women/pre-loved',
-        #     'path': 'Women > Pre-loved'
-        # },
-        # 'Men Clothing': {
-        #     'url': 'https://www.ounass.ae/men/clothing',
-        #     'path': 'Men > Clothing'
-        # },
-        # 'Men Shoes': {
-        #     'url': 'https://www.ounass.ae/men/shoes',
-        #     'path': 'Men > Shoes'
-        # },
-        # 'Men Accessories': {
-        #     'url': 'https://www.ounass.ae/men/accessories',
-        #     'path': 'Men > Accessories'
-        # },
-        # 'Men Grooming': {
-        #     'url': 'https://www.ounass.ae/men/grooming',
-        #     'path': 'Men > Grooming'
-        # },
-        # 'Men Gifts': {
-        #     'url': 'https://www.ounass.ae/men/edits/gifts-for-him',
-        #     'path': 'Men > Gifts'
-        # },
-        # 'Men Bags': {
-        #     'url': 'https://www.ounass.ae/men/bags',
-        #     'path': 'Men > Bags'
-        # },
-        # 'Men Watches': {
-        #     'url': 'https://www.ounass.ae/men/watches',
-        #     'path': 'Men > Watches'
-        # },
-        # 'Men Home': {
-        #     'url': 'https://www.ounass.ae/men/home',
-        #     'path': 'Men > Home'
-        # },
-        # 'Kids Baby': {
-        #     'url': 'https://www.ounass.ae/kids/baby',
-        #     'path': 'Kids > Baby'
-        # },
-        # 'Kids Girl': {
-        #     'url': 'https://www.ounass.ae/kids/girl',
-        #     'path': 'Kids > Girl'
-        # },
-        # 'Kids Boy': {
-        #     'url': 'https://www.ounass.ae/kids/boy',
-        #     'path': 'Kids > Boy'
-        # },
-        # 'Kids Shoes': {
-        #     'url': 'https://www.ounass.ae/kids/shoes',
-        #     'path': 'Kids > Shoes'
-        # },
-        # 'Kids Accessories': {
-        #     'url': 'https://www.ounass.ae/kids/accessories',
-        #     'path': 'Kids > Accessories'
-        # },
-        # 'Kids Gifts': {
-        #     'url': 'https://www.ounass.ae/kids/edits/all-gifts',
-        #     'path': 'Kids > Gifts'
-        # },
-        # 'Kids Edits': {
-        #     'url': 'https://www.ounass.ae/kids/edits',
-        #     'path': 'Kids > Edits'
-        # },
+        'Women Shoes': {
+            'url': 'https://www.ounass.ae/women/shoes',
+            'path': 'Women > Shoes'
+        },
+        'Women Bags': {
+            'url': 'https://www.ounass.ae/women/bags',
+            'path': 'Women > Bags'
+        },
+        'Women Beauty': {
+            'url': 'https://www.ounass.ae/women/beauty',
+            'path': 'Women > Beauty'
+        },
+        'Women Fine Jewellery': {
+            'url': 'https://www.ounass.ae/women/jewellery/fine-jewellery',
+            'path': 'Women > Jewellery > Fine Jewellery'
+        },
+        'Women Fashion Jewellery': {
+            'url': 'https://www.ounass.ae/women/jewellery/fashion-jewellery',
+            'path': 'Women > Jewellery > Fashion Jewellery'
+        },
+        'Women Accessories': {
+            'url': 'https://www.ounass.ae/women/accessories',
+            'path': 'Women > Accessories'
+        },
+        'Women Gifts': {
+            'url': 'https://www.ounass.ae/women/edits/gifts-for-her',
+            'path': 'Women > Gifts'
+        },
+        'Women Home': {
+            'url': 'https://www.ounass.ae/women/home',
+            'path': 'Women > Home'
+        },
+        'Women Pre-loved': {
+            'url': 'https://www.ounass.ae/women/pre-loved',
+            'path': 'Women > Pre-loved'
+        },
+        'Men Clothing': {
+            'url': 'https://www.ounass.ae/men/clothing',
+            'path': 'Men > Clothing'
+        },
+        'Men Shoes': {
+            'url': 'https://www.ounass.ae/men/shoes',
+            'path': 'Men > Shoes'
+        },
+        'Men Accessories': {
+            'url': 'https://www.ounass.ae/men/accessories',
+            'path': 'Men > Accessories'
+        },
+        'Men Grooming': {
+            'url': 'https://www.ounass.ae/men/grooming',
+            'path': 'Men > Grooming'
+        },
+        'Men Gifts': {
+            'url': 'https://www.ounass.ae/men/edits/gifts-for-him',
+            'path': 'Men > Gifts'
+        },
+        'Men Bags': {
+            'url': 'https://www.ounass.ae/men/bags',
+            'path': 'Men > Bags'
+        },
+        'Men Watches': {
+            'url': 'https://www.ounass.ae/men/watches',
+            'path': 'Men > Watches'
+        },
+        'Men Home': {
+            'url': 'https://www.ounass.ae/men/home',
+            'path': 'Men > Home'
+        },
+        'Kids Baby': {
+            'url': 'https://www.ounass.ae/kids/baby',
+            'path': 'Kids > Baby'
+        },
+        'Kids Girl': {
+            'url': 'https://www.ounass.ae/kids/girl',
+            'path': 'Kids > Girl'
+        },
+        'Kids Boy': {
+            'url': 'https://www.ounass.ae/kids/boy',
+            'path': 'Kids > Boy'
+        },
+        'Kids Shoes': {
+            'url': 'https://www.ounass.ae/kids/shoes',
+            'path': 'Kids > Shoes'
+        },
+        'Kids Accessories': {
+            'url': 'https://www.ounass.ae/kids/accessories',
+            'path': 'Kids > Accessories'
+        },
+        'Kids Gifts': {
+            'url': 'https://www.ounass.ae/kids/edits/all-gifts',
+            'path': 'Kids > Gifts'
+        },
+        'Kids Edits': {
+            'url': 'https://www.ounass.ae/kids/edits',
+            'path': 'Kids > Edits'
+        },
     }
     print("=" * 80)
     print("🛍  OUNASS ENHANCED ANTI-DETECTION SCRAPER")
