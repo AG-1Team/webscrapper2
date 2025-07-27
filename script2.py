@@ -829,10 +829,11 @@ def extract_product_details_enhanced(driver, url):
         print("[*] Saved debug_product_page.html for inspection.")
         return product_data
 
-def download_product_images(product_data, download_images_flag=True):
+def download_product_images(product_data, download_images_flag=True, github_repo=None, github_token=None):
     if not download_images_flag or not product_data['image_urls'] or not product_data['product_name']:
         print(f"[DEBUG] Skipping image download: download_images_flag={download_images_flag}, image_urls={product_data['image_urls']}, product_name={product_data['product_name']}")
         return
+
     try:
         folder_name = re.sub(r'[^ - \w-]', '', product_data['product_name'])[:50]
         folder_name = re.sub(r'\s+', '_', folder_name)
@@ -841,6 +842,7 @@ def download_product_images(product_data, download_images_flag=True):
         product_folder = os.path.join('product_images', folder_name)
         os.makedirs(product_folder, exist_ok=True)
         print(f"Saving images to: {os.path.abspath(product_folder)}")
+
         image_urls = product_data['image_urls'].split(', ')
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -850,12 +852,13 @@ def download_product_images(product_data, download_images_flag=True):
             'DNT': '1',
             'Connection': 'keep-alive'
         }
-        print(f"[*] Downloading images to: {product_folder}")
+
         for i, img_url in enumerate(image_urls[:8], 1):
             try:
                 print(f"[DEBUG] Attempting to download image {i}: {img_url}")
                 response = requests.get(img_url, timeout=15, headers=headers)
                 print(f"[DEBUG] Response status for image {i}: {response.status_code}, Content-Length: {len(response.content)}")
+
                 if response.status_code == 200 and len(response.content) > 1000:
                     content_type = response.headers.get('content-type', '')
                     if 'jpeg' in content_type or 'jpg' in content_type:
@@ -866,20 +869,31 @@ def download_product_images(product_data, download_images_flag=True):
                         ext = '.webp'
                     else:
                         ext = '.jpg'
+
                     safe_name = re.sub(r'[^ - \w-]', '', product_data['product_name'])[:30]
                     safe_name = re.sub(r'\s+', '_', safe_name)
-                    filename = f"{safe_name} pic {i}{ext}"
+                    filename = f"{safe_name}_pic_{i}{ext}"
                     filepath = os.path.join(product_folder, filename)
+
                     with open(filepath, 'wb') as f:
                         f.write(response.content)
                     print(f"[✓] Downloaded: {filename}")
+
+                    # Upload to GitHub
+                    if github_repo and github_token:
+                        remote_path = f"images/{folder_name}/{filename}"
+                        upload_to_github(filepath, github_repo, github_token, remote_path)
+
                 else:
                     print(f"[Warning] Image {i} not downloaded: status {response.status_code}, content length {len(response.content)}")
             except Exception as e:
                 print(f"[Warning] Failed to download image {i}: {e}")
+
             time.sleep(random.uniform(1, 2))
+
     except Exception as e:
         print(f"[Error] Failed to download images: {e}")
+
 
 
 def load_existing_data():
@@ -1007,6 +1021,8 @@ def upload_to_github(file_path, repo, token, remote_path):
         print(f"[❌] Exception during GitHub upload: {e}")
 
 def main():
+    GITHUB_REPO = "os959345/webscrapper2"  # Example: os959345/webscrapper
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
     MAX_PRODUCTS_PER_CATEGORY = None  # Scrape all products
     DOWNLOAD_IMAGES = True
     categories = {
@@ -1014,102 +1030,102 @@ def main():
             'url': 'https://www.ounass.ae/women/clothing',
             'path': 'Women > Clothing'
         },
-        'Women Shoes': {
-            'url': 'https://www.ounass.ae/women/shoes',
-            'path': 'Women > Shoes'
-        },
-        'Women Bags': {
-            'url': 'https://www.ounass.ae/women/bags',
-            'path': 'Women > Bags'
-        },
-        'Women Beauty': {
-            'url': 'https://www.ounass.ae/women/beauty',
-            'path': 'Women > Beauty'
-        },
-        'Women Fine Jewellery': {
-            'url': 'https://www.ounass.ae/women/jewellery/fine-jewellery',
-            'path': 'Women > Jewellery > Fine Jewellery'
-        },
-        'Women Fashion Jewellery': {
-            'url': 'https://www.ounass.ae/women/jewellery/fashion-jewellery',
-            'path': 'Women > Jewellery > Fashion Jewellery'
-        },
-        'Women Accessories': {
-            'url': 'https://www.ounass.ae/women/accessories',
-            'path': 'Women > Accessories'
-        },
-        'Women Gifts': {
-            'url': 'https://www.ounass.ae/women/edits/gifts-for-her',
-            'path': 'Women > Gifts'
-        },
-        'Women Home': {
-            'url': 'https://www.ounass.ae/women/home',
-            'path': 'Women > Home'
-        },
-        'Women Pre-loved': {
-            'url': 'https://www.ounass.ae/women/pre-loved',
-            'path': 'Women > Pre-loved'
-        },
-        'Men Clothing': {
-            'url': 'https://www.ounass.ae/men/clothing',
-            'path': 'Men > Clothing'
-        },
-        'Men Shoes': {
-            'url': 'https://www.ounass.ae/men/shoes',
-            'path': 'Men > Shoes'
-        },
-        'Men Accessories': {
-            'url': 'https://www.ounass.ae/men/accessories',
-            'path': 'Men > Accessories'
-        },
-        'Men Grooming': {
-            'url': 'https://www.ounass.ae/men/grooming',
-            'path': 'Men > Grooming'
-        },
-        'Men Gifts': {
-            'url': 'https://www.ounass.ae/men/edits/gifts-for-him',
-            'path': 'Men > Gifts'
-        },
-        'Men Bags': {
-            'url': 'https://www.ounass.ae/men/bags',
-            'path': 'Men > Bags'
-        },
-        'Men Watches': {
-            'url': 'https://www.ounass.ae/men/watches',
-            'path': 'Men > Watches'
-        },
-        'Men Home': {
-            'url': 'https://www.ounass.ae/men/home',
-            'path': 'Men > Home'
-        },
-        'Kids Baby': {
-            'url': 'https://www.ounass.ae/kids/baby',
-            'path': 'Kids > Baby'
-        },
-        'Kids Girl': {
-            'url': 'https://www.ounass.ae/kids/girl',
-            'path': 'Kids > Girl'
-        },
-        'Kids Boy': {
-            'url': 'https://www.ounass.ae/kids/boy',
-            'path': 'Kids > Boy'
-        },
-        'Kids Shoes': {
-            'url': 'https://www.ounass.ae/kids/shoes',
-            'path': 'Kids > Shoes'
-        },
-        'Kids Accessories': {
-            'url': 'https://www.ounass.ae/kids/accessories',
-            'path': 'Kids > Accessories'
-        },
-        'Kids Gifts': {
-            'url': 'https://www.ounass.ae/kids/edits/all-gifts',
-            'path': 'Kids > Gifts'
-        },
-        'Kids Edits': {
-            'url': 'https://www.ounass.ae/kids/edits',
-            'path': 'Kids > Edits'
-        },
+        # 'Women Shoes': {
+        #     'url': 'https://www.ounass.ae/women/shoes',
+        #     'path': 'Women > Shoes'
+        # },
+        # 'Women Bags': {
+        #     'url': 'https://www.ounass.ae/women/bags',
+        #     'path': 'Women > Bags'
+        # },
+        # 'Women Beauty': {
+        #     'url': 'https://www.ounass.ae/women/beauty',
+        #     'path': 'Women > Beauty'
+        # },
+        # 'Women Fine Jewellery': {
+        #     'url': 'https://www.ounass.ae/women/jewellery/fine-jewellery',
+        #     'path': 'Women > Jewellery > Fine Jewellery'
+        # },
+        # 'Women Fashion Jewellery': {
+        #     'url': 'https://www.ounass.ae/women/jewellery/fashion-jewellery',
+        #     'path': 'Women > Jewellery > Fashion Jewellery'
+        # },
+        # 'Women Accessories': {
+        #     'url': 'https://www.ounass.ae/women/accessories',
+        #     'path': 'Women > Accessories'
+        # },
+        # 'Women Gifts': {
+        #     'url': 'https://www.ounass.ae/women/edits/gifts-for-her',
+        #     'path': 'Women > Gifts'
+        # },
+        # 'Women Home': {
+        #     'url': 'https://www.ounass.ae/women/home',
+        #     'path': 'Women > Home'
+        # },
+        # 'Women Pre-loved': {
+        #     'url': 'https://www.ounass.ae/women/pre-loved',
+        #     'path': 'Women > Pre-loved'
+        # },
+        # 'Men Clothing': {
+        #     'url': 'https://www.ounass.ae/men/clothing',
+        #     'path': 'Men > Clothing'
+        # },
+        # 'Men Shoes': {
+        #     'url': 'https://www.ounass.ae/men/shoes',
+        #     'path': 'Men > Shoes'
+        # },
+        # 'Men Accessories': {
+        #     'url': 'https://www.ounass.ae/men/accessories',
+        #     'path': 'Men > Accessories'
+        # },
+        # 'Men Grooming': {
+        #     'url': 'https://www.ounass.ae/men/grooming',
+        #     'path': 'Men > Grooming'
+        # },
+        # 'Men Gifts': {
+        #     'url': 'https://www.ounass.ae/men/edits/gifts-for-him',
+        #     'path': 'Men > Gifts'
+        # },
+        # 'Men Bags': {
+        #     'url': 'https://www.ounass.ae/men/bags',
+        #     'path': 'Men > Bags'
+        # },
+        # 'Men Watches': {
+        #     'url': 'https://www.ounass.ae/men/watches',
+        #     'path': 'Men > Watches'
+        # },
+        # 'Men Home': {
+        #     'url': 'https://www.ounass.ae/men/home',
+        #     'path': 'Men > Home'
+        # },
+        # 'Kids Baby': {
+        #     'url': 'https://www.ounass.ae/kids/baby',
+        #     'path': 'Kids > Baby'
+        # },
+        # 'Kids Girl': {
+        #     'url': 'https://www.ounass.ae/kids/girl',
+        #     'path': 'Kids > Girl'
+        # },
+        # 'Kids Boy': {
+        #     'url': 'https://www.ounass.ae/kids/boy',
+        #     'path': 'Kids > Boy'
+        # },
+        # 'Kids Shoes': {
+        #     'url': 'https://www.ounass.ae/kids/shoes',
+        #     'path': 'Kids > Shoes'
+        # },
+        # 'Kids Accessories': {
+        #     'url': 'https://www.ounass.ae/kids/accessories',
+        #     'path': 'Kids > Accessories'
+        # },
+        # 'Kids Gifts': {
+        #     'url': 'https://www.ounass.ae/kids/edits/all-gifts',
+        #     'path': 'Kids > Gifts'
+        # },
+        # 'Kids Edits': {
+        #     'url': 'https://www.ounass.ae/kids/edits',
+        #     'path': 'Kids > Edits'
+        # },
     }
     print("=" * 80)
     print("🛍  OUNASS ENHANCED ANTI-DETECTION SCRAPER")
@@ -1153,15 +1169,12 @@ def main():
                     all_products.append(product_data)
                     print(f"[✅] Successfully scraped: {product_data['product_name'][:50]}")
                     print(f"[DEBUG] Extracted image URLs: {product_data['image_urls']}")
-                    download_product_images(product_data, True)
+                    download_product_images(product_data, True, github_repo=GITHUB_REPO, github_token=GITHUB_TOKEN)
+
     finally:
         driver.quit()
         print("[✅] Browser closed successfully")
     save_data_with_append(all_products, existing_products)
-    # Upload to GitHub after scraping
-    GITHUB_REPO = "os959345/webscrapper2"  # Example: os959345/webscrapper
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")  # Best: set this in Railway > Variables
-
     # Filenames returned from save_data_with_append
     csv_filename, json_filename, total_products = save_data_with_append(all_products, existing_products)
 
