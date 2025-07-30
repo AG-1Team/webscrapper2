@@ -1021,10 +1021,11 @@ def upload_to_github(file_path, repo, token, remote_path):
         print(f"[❌] Exception during GitHub upload: {e}")
 
 def main():
-    GITHUB_REPO = "os959345/webscrapper2"  # Example: os959345/webscrapper
+    GITHUB_REPO = "os959345/webscrapper"
     GITHUB_TOKEN = "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"
-    MAX_PRODUCTS_PER_CATEGORY = None  # Scrape all products
+    MAX_PRODUCTS_PER_CATEGORY = None
     DOWNLOAD_IMAGES = True
+
     categories = {
         'Women Clothing': {
             'url': 'https://www.ounass.ae/women/clothing',
@@ -1127,63 +1128,78 @@ def main():
             'path': 'Kids > Edits'
         },
     }
+
     print("=" * 80)
-    print("🛍  OUNASS ENHANCED ANTI-DETECTION SCRAPER")
+    print("🏍  OUNASS ENHANCED ANTI-DETECTION SCRAPER")
     print("=" * 80)
     print(f"[*] Products per category: {MAX_PRODUCTS_PER_CATEGORY}")
     print(f"[*] Categories to scrape: {len(categories)}")
+
     existing_products, existing_urls = load_existing_data()
     print(f"[*] Found {len(existing_urls)} existing product URLs to skip")
+
     print("\n[*] Setting up enhanced anti-detection driver...")
     driver = setup_undetected_driver()
     if not driver:
         print("[❌] Failed to initialize browser driver")
         return
+
     all_products = []
     try:
         for category_name, category_info in categories.items():
-            print(f"\n{'='*50}")
-            print(f"📂 SCRAPING {category_name.upper()} CATEGORY")
-            print(f"{'='*50}")
-            if category_name != list(categories.keys())[0]:
-                wait_time = random.uniform(15, 30)
-                print(f"[💤] Waiting {wait_time:.1f} seconds before next category...")
-                time.sleep(wait_time)
+            print(f"\n{'='*50}\n📂 SCRAPING {category_name.upper()} CATEGORY\n{'='*50}")
+
+            wait_time = random.uniform(15, 30)
+            print(f"[💤] Waiting {wait_time:.1f} seconds before scraping...")
+            time.sleep(wait_time)
+
             product_links = enhanced_collect_product_links(driver, category_info['url'], MAX_PRODUCTS_PER_CATEGORY)
             if not product_links:
                 print(f"[⚠] No products found in {category_name} category")
                 continue
+
             new_product_links = [url for url in product_links if url not in existing_urls]
             if not new_product_links:
                 print(f"[ℹ] All products in {category_name} already scraped")
                 continue
+
             print(f"[🆕] Scraping {len(new_product_links)} new products")
+            category_products = []
+
             for i, url in enumerate(new_product_links, 1):
                 print(f"\n[*] Processing product {i}/{len(new_product_links)}")
                 if i > 1:
                     delay = random.uniform(10, 20)
                     print(f"[💤] Waiting {delay:.1f} seconds...")
                     time.sleep(delay)
+
                 product_data = extract_product_details_enhanced(driver, url)
-                if product_data['product_name']:
+                if product_data.get('product_name'):
                     all_products.append(product_data)
-                    print(f"[✅] Successfully scraped: {product_data['product_name'][:50]}")
-                    print(f"[DEBUG] Extracted image URLs: {product_data['image_urls']}")
-                    download_product_images(product_data, True, github_repo=GITHUB_REPO, github_token=GITHUB_TOKEN)
+                    category_products.append(product_data)
+                    print(f"[✅] Scraped: {product_data['product_name'][:50]}")
+
+                    if DOWNLOAD_IMAGES:
+                        download_product_images(product_data, True, github_repo=GITHUB_REPO, github_token=GITHUB_TOKEN)
+
+            # After entire category is processed
+            if category_products:
+                csv_filename, json_filename, _ = save_data_with_append(category_products, existing_products)
+
+                if GITHUB_TOKEN:
+                    upload_to_github(csv_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{csv_filename}")
+                    upload_to_github(json_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{json_filename}")
+                    print(f"[⬆️] Uploaded data files for {category_name}")
 
     finally:
         driver.quit()
         print("[✅] Browser closed successfully")
-    save_data_with_append(all_products, existing_products)
-    # Filenames returned from save_data_with_append
-    csv_filename, json_filename, total_products = save_data_with_append(all_products, existing_products)
 
-    if GITHUB_TOKEN:
-        upload_to_github(csv_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{csv_filename}")
-        upload_to_github(json_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{json_filename}")
+    if all_products:
+        print("\n📊 FINAL RESULTS")
+        print(f"🆕 Total new products scraped: {len(all_products)}")
     else:
-        print("[⚠️] GITHUB_TOKEN not set. Skipping upload to GitHub.")
-
+        print("\n[ℹ️] No new products scraped.")
 
 if __name__ == "__main__":
     main()
