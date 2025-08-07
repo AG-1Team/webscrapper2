@@ -22,6 +22,25 @@ from selenium.webdriver.common.keys import Keys
 import base64
 import requests
 
+
+
+
+def get_versioned_filename(filename):
+    """
+    Given a filename, returns a versioned filename if one already exists.
+    E.g., ounass_data.json -> ounass_data(1).json, ounass_data(2).json, etc.
+    """
+    base, ext = os.path.splitext(filename)
+    if not os.path.exists(filename):
+        return filename
+
+    version = 1
+    while True:
+        new_filename = f"{base}({version}){ext}"
+        if not os.path.exists(new_filename):
+            return new_filename
+        version += 1
+        
 def wait_and_retry_on_block(driver, url, max_retries=1):
     """Minimal placeholder: just loads the URL and returns True."""
     try:
@@ -829,7 +848,7 @@ def extract_product_details_enhanced(driver, url):
         print("[*] Saved debug_product_page.html for inspection.")
         return product_data
 
-def download_product_images(product_data, download_images_flag=True, github_repo=None, github_token=None):
+def download_product_images(product_data, download_images_flag=True):
     if not download_images_flag or not product_data['image_urls'] or not product_data['product_name']:
         print(f"[DEBUG] Skipping image download: download_images_flag={download_images_flag}, image_urls={product_data['image_urls']}, product_name={product_data['product_name']}")
         return
@@ -878,12 +897,6 @@ def download_product_images(product_data, download_images_flag=True, github_repo
                     with open(filepath, 'wb') as f:
                         f.write(response.content)
                     print(f"[✓] Downloaded: {filename}")
-
-                    # Upload to GitHub
-                    if github_repo and github_token:
-                        remote_path = f"images/{folder_name}/{filename}"
-                        upload_to_github(filepath, github_repo, github_token, remote_path)
-
                 else:
                     print(f"[Warning] Image {i} not downloaded: status {response.status_code}, content length {len(response.content)}")
             except Exception as e:
@@ -893,8 +906,6 @@ def download_product_images(product_data, download_images_flag=True, github_repo
 
     except Exception as e:
         print(f"[Error] Failed to download images: {e}")
-
-
 
 def load_existing_data():
     """Load existing scraped data to prevent duplicates"""
@@ -925,103 +936,80 @@ def load_existing_data():
     
     return existing_products, existing_urls
 
-def save_data_with_append(all_products, existing_products):
-    """Save data by appending to existing files"""
-    # Create DataFrame for new products only
+def save_data_with_append(all_products):
+    """Save data to new versioned files every time"""
     if not all_products:
         print("[!] No new products to save")
-        return 'ounass_products.csv', 'ounass_products.json', len(existing_products)
-    
+        return None, None, 0
+
     new_df = pd.DataFrame(all_products)
-    
-    # CSV filename
-    csv_filename = 'ounass_products.csv'
-    json_filename = 'ounass_products.json'
-    
-    # Try to append to existing CSV
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            if existing_products and os.path.exists(csv_filename):
-                # Load existing CSV and append new data
-                existing_df = pd.read_csv(csv_filename, encoding='utf-8-sig')
-                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-                combined_df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
-                print(f"[✅] Successfully appended {len(all_products)} new products to {csv_filename}")
-            else:
-                # No existing data, create new file
-                new_df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
-                print(f"[✅] Successfully created new {csv_filename} with {len(all_products)} products")
-            break
-        except PermissionError:
-            if attempt < max_retries - 1:
-                print(f"[⏳] Permission denied, retrying in 2 seconds... (attempt {attempt + 1}/{max_retries})")
-                time.sleep(2)
-            else:
-                # Last resort: create timestamped backup
-                timestamp = time.strftime("%Y%m%d_%H%M%S")
-                backup_csv = f'ounass_products_{timestamp}.csv'
-                new_df.to_csv(backup_csv, index=False, encoding='utf-8-sig')
-                print(f"[⚠] Could not save to {csv_filename} after {max_retries} attempts")
-                print(f"[💾] Saved to backup file: {backup_csv}")
-                csv_filename = backup_csv
-        except Exception as e:
-            print(f"[Error] Failed to save CSV: {e}")
-            break
-    
-    # Save JSON (combine existing + new)
+
+    # Generate versioned filenames
+    csv_filename = get_versioned_filename("ounass_products.csv")
+    json_filename = get_versioned_filename("ounass_products.json")
+
+    # Save CSV
     try:
-        combined_products = existing_products + all_products if existing_products else all_products
-        with open(json_filename, 'w', encoding='utf-8') as f:
-            json.dump(combined_products, f, indent=2, ensure_ascii=False)
-        print(f"[✅] Successfully saved to {json_filename}")
+        new_df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
+        print(f"[✅] Saved new CSV: {csv_filename} with {len(all_products)} products")
     except Exception as e:
-        print(f"[Error] Failed to save JSON: {e}")
-    
-    return csv_filename, json_filename, len(combined_products)
+        print(f"[❌] Failed to save CSV: {e}")
+        csv_filename = None
 
-def upload_to_github(file_path, repo, token, remote_path):
-    """Upload or update a file in a GitHub repo using the REST API."""
+    # Save JSON
     try:
-        url = f"https://api.github.com/repos/{repo}/contents/{remote_path}"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
+        with open(json_filename, 'w', encoding='utf-8') as f:
+            json.dump(all_products, f, indent=2, ensure_ascii=False)
+        print(f"[✅] Saved JSON: {json_filename}")
+    except Exception as e:
+        print(f"[❌] Failed to save JSON: {e}")
+        json_filename = None
 
-        # Read file contents and encode
+    return csv_filename, json_filename, len(all_products)
+
+def upload_to_github(local_path, repo, token, remote_path):
+    """Upload a file or folder to GitHub."""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    def upload_file(file_path, github_path):
         with open(file_path, "rb") as f:
-            content = f.read()
-        encoded_content = base64.b64encode(content).decode("utf-8")
+            content = base64.b64encode(f.read()).decode("utf-8")
+
+        url = f"https://api.github.com/repos/{repo}/contents/{github_path}"
 
         # Check if file already exists
         response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            sha = response.json()["sha"]
-            print(f"[ℹ️] File {remote_path} exists, will update")
-        else:
-            sha = None
-            print(f"[🆕] File {remote_path} does not exist, will create")
+        sha = response.json().get("sha") if response.status_code == 200 else None
 
-        data = {
-            "message": f"Upload {remote_path}",
-            "content": encoded_content,
+        payload = {
+            "message": f"Upload {github_path}",
+            "content": content,
             "branch": "main"
         }
         if sha:
-            data["sha"] = sha
+            payload["sha"] = sha
 
-        upload_response = requests.put(url, headers=headers, json=data)
-        if upload_response.status_code in [200, 201]:
-            print(f"[✅] Uploaded {file_path} to GitHub as {remote_path}")
+        r = requests.put(url, headers=headers, json=payload)
+        if r.status_code in [200, 201]:
+            print(f"[✅] Uploaded: {github_path}")
         else:
-            print(f"[❌] Failed to upload {file_path}: {upload_response.text}")
+            print(f"[❌] Upload failed for {github_path}: {r.text}")
 
-    except Exception as e:
-        print(f"[❌] Exception during GitHub upload: {e}")
+    if os.path.isdir(local_path):
+        for root, _, files in os.walk(local_path):
+            for file in files:
+                full_path = os.path.join(root, file)
+                relative_path = os.path.relpath(full_path, local_path)
+                github_file_path = f"{remote_path}/{relative_path}".replace("\\", "/")
+                upload_file(full_path, github_file_path)
+    else:
+        upload_file(local_path, remote_path)
 
 def main():
-    GITHUB_REPO = "os959345/webscrapper"
+    GITHUB_REPO = "os959345/webscrapper2"
     GITHUB_TOKEN = "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"
     MAX_PRODUCTS_PER_CATEGORY = None
     DOWNLOAD_IMAGES = True
@@ -1135,8 +1123,6 @@ def main():
     print(f"[*] Products per category: {MAX_PRODUCTS_PER_CATEGORY}")
     print(f"[*] Categories to scrape: {len(categories)}")
 
-    existing_products, existing_urls = load_existing_data()
-    print(f"[*] Found {len(existing_urls)} existing product URLs to skip")
 
     print("\n[*] Setting up enhanced anti-detection driver...")
     driver = setup_undetected_driver()
@@ -1158,7 +1144,7 @@ def main():
                 print(f"[⚠] No products found in {category_name} category")
                 continue
 
-            new_product_links = [url for url in product_links if url not in existing_urls]
+            new_product_links = product_links
             if not new_product_links:
                 print(f"[ℹ] All products in {category_name} already scraped")
                 continue
@@ -1184,12 +1170,12 @@ def main():
 
             # After entire category is processed
             if category_products:
-                csv_filename, json_filename, _ = save_data_with_append(category_products, existing_products)
+                csv_filename, json_filename, _ = save_data_with_append(category_products)
 
-                if GITHUB_TOKEN:
-                    upload_to_github(csv_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{csv_filename}")
-                    upload_to_github(json_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{json_filename}")
-                    print(f"[⬆️] Uploaded data files for {category_name}")
+                # if GITHUB_TOKEN:
+                #     upload_to_github(csv_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{csv_filename}")
+                #     upload_to_github(json_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{json_filename}")
+                #     print(f"[⬆️] Uploaded data files for {category_name}")
 
     finally:
         driver.quit()
@@ -1198,6 +1184,13 @@ def main():
     if all_products:
         print("\n📊 FINAL RESULTS")
         print(f"🆕 Total new products scraped: {len(all_products)}")
+        csv_filename, json_filename, _ = save_data_with_append(all_products)
+
+        if GITHUB_TOKEN:
+            upload_to_github(csv_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{csv_filename}")
+            upload_to_github(json_filename, GITHUB_REPO, GITHUB_TOKEN, f"data/{json_filename}")
+            upload_to_github("product_images", GITHUB_REPO, GITHUB_TOKEN, "product_images")
+            print("\n[⬆️] Final data + product images uploaded to GitHub")
     else:
         print("\n[ℹ️] No new products scraped.")
 
