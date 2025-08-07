@@ -1202,4 +1202,6 @@ def main():
         print("\n[ℹ️] No new products scraped.")
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        time.sleep(5)
